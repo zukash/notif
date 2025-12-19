@@ -85,6 +85,25 @@ on performCloseAction(notification)
 	end tell
 end performCloseAction
 
+-- Check if notifications are in expanded state
+on isExpanded(theWindow)
+	tell application "System Events"
+		tell process PROCESS_NAME
+			set allElements to entire contents of theWindow
+			
+			repeat with element in allElements
+				try
+					if subrole of element is SUBROLE_ALERT then
+						return true
+					end if
+				end try
+			end repeat
+			
+			return false
+		end tell
+	end tell
+end isExpanded
+
 -- ============================================================================
 -- Command Handlers
 -- ============================================================================
@@ -94,6 +113,11 @@ on handleExpand()
 	set theWindow to my getNotificationWindow()
 	if theWindow is missing value then
 		return "No notifications"
+	end if
+	
+	-- 既に展開されていればスキップ
+	if my isExpanded(theWindow) then
+		return "Already expanded"
 	end if
 	
 	set wasExpanded to my clickElementBySubrole(theWindow, SUBROLE_STACK)
@@ -110,6 +134,11 @@ on handleCollapse()
 	set theWindow to my getNotificationWindow()
 	if theWindow is missing value then
 		return "No notifications"
+	end if
+	
+	-- 展開されていなければスキップ
+	if not my isExpanded(theWindow) then
+		return "Already collapsed or no notifications"
 	end if
 	
 	tell application "System Events"
@@ -178,6 +207,20 @@ on handleClose()
 	end if
 end handleClose
 
+-- Toggle between expand and collapse
+on handleToggle()
+	set theWindow to my getNotificationWindow()
+	if theWindow is missing value then
+		return "No notifications"
+	end if
+	
+	if my isExpanded(theWindow) then
+		return my handleCollapse()
+	else
+		return my handleExpand()
+	end if
+end handleToggle
+
 -- ============================================================================
 -- Entry Point
 -- ============================================================================
@@ -193,6 +236,8 @@ on run argv
 		return my handleExpand()
 	else if cmd is "collapse" then
 		return my handleCollapse()
+	else if cmd is "toggle" then
+		return my handleToggle()
 	else if cmd is "click" then
 		return my handleClick()
 	else if cmd is "close" then

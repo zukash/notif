@@ -10,19 +10,21 @@ Usage: notif <command>
 Commands:
     expand      Expand notification stack
     collapse    Collapse notification stack
+    toggle      Toggle between expand/collapse
     click       Click first notification
     close       Close first notification
 
 Examples:
     notif expand    # Expand notification stack
     notif collapse  # Collapse stack
+    notif toggle    # Toggle expand/collapse
     notif click     # Click first notification
     notif close     # Close first notification
 EOF
 }
 
 case "$1" in
-    expand|collapse|click|close)
+    expand|collapse|toggle|click|close)
         osascript "$SCRIPT_DIR/notif.applescript" "$1"
         ;;
     -h|--help|help|"")
