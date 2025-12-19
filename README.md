@@ -16,8 +16,7 @@ Single-file AppleScript architecture optimized for keyboard-driven workflows.
 ### Homebrew
 
 ```bash
-brew tap zukash/tap
-brew install notif
+brew install zukash/tap/notif
 ```
 
 ### Manual
@@ -57,7 +56,7 @@ Example Karabiner configuration:
 {
   "type": "basic",
   "from": { "key_code": "n", "modifiers": { "mandatory": ["command", "shift"] } },
-  "to": [{ "shell_command": "/usr/local/bin/notif expand" }]
+  "to": [{ "shell_command": "$(brew --prefix)/bin/notif expand" }]
 }
 ```
 
