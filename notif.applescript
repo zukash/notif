@@ -9,7 +9,6 @@ property PROCESS_NAME : "NotificationCenter"
 property SUBROLE_ALERT : "AXNotificationCenterAlert"
 property SUBROLE_STACK : "AXNotificationCenterAlertStack"
 property ACTION_CLOSE : "Close"
-property DEFAULT_DELAY : 0.3
 
 -- ============================================================================
 -- Common Handlers
@@ -57,7 +56,6 @@ on clickElementBySubrole(theWindow, targetSubrole)
 				try
 					if subrole of element is targetSubrole then
 						click element
-						delay DEFAULT_DELAY
 						return true
 					end if
 				end try
@@ -72,14 +70,13 @@ end clickElementBySubrole
 on performCloseAction(notification)
 	tell application "System Events"
 		tell process PROCESS_NAME
-			set actionList to actions of notification
-			repeat with theAction in actionList
-				if name of theAction contains ACTION_CLOSE then
-					perform theAction
-					delay DEFAULT_DELAY
-					return true
-				end if
-			end repeat
+		set actionList to actions of notification
+		repeat with theAction in actionList
+			if name of theAction contains ACTION_CLOSE then
+				perform theAction
+				return true
+			end if
+		end repeat
 			return false
 		end tell
 	end tell
@@ -151,7 +148,6 @@ on handleCollapse()
 					if role of element is "AXButton" then
 						if subrole of element is not SUBROLE_ALERT then
 							click element
-							delay DEFAULT_DELAY
 							return "Collapsed notification stack"
 						end if
 					end if
