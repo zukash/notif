@@ -27,21 +27,34 @@ on getNotificationWindow()
 end getNotificationWindow
 
 -- Get first notification element (assumes already expanded)
+-- Returns the notification with lowest Y position (topmost)
 -- Returns {notification:element, error:string}
 on getFirstNotification(theWindow)
 	tell application "System Events"
 		tell process PROCESS_NAME
-			set allElements to entire contents of theWindow
-			
-			repeat with element in allElements
-				try
-					if subrole of element is SUBROLE_ALERT then
-						return {notification:element, errorMsg:""}
+		set allElements to entire contents of theWindow
+		set lowestY to missing value
+		set targetNotification to missing value
+		
+		repeat with element in allElements
+			try
+				if subrole of element is SUBROLE_ALERT then
+					set elementPos to position of element
+					set yCoord to item 2 of elementPos
+					
+					if lowestY is missing value or yCoord < lowestY then
+						set lowestY to yCoord
+						set targetNotification to element
 					end if
-				end try
-			end repeat
-			
+				end if
+			end try
+		end repeat
+		
+		if targetNotification is missing value then
 			return {notification:missing value, errorMsg:"No notifications"}
+		else
+			return {notification:targetNotification, errorMsg:""}
+		end if
 		end tell
 	end tell
 end getFirstNotification
