@@ -1,20 +1,23 @@
 # Agent Guidelines for notif
 
 ## Project Overview
-Minimal macOS Notification Center controller for keyboard shortcuts. Single-file AppleScript with Bash wrapper, designed for simplicity and keyboard-driven workflows.
+Minimal macOS Notification Center controller for keyboard shortcuts. Single-file Objective-C implementation designed for speed, simplicity, and keyboard-driven workflows.
 
 ## Purpose
-Control notifications via keyboard shortcuts with 4 essential commands:
+Control notifications via keyboard shortcuts with 5 essential commands:
 - Expand notification stack
-- Collapse notification stack  
+- Collapse notification stack
+- Toggle between expand/collapse
 - Click first notification (opens source app)
 - Close first notification (dismiss without action)
 
 ## Directory Structure
 ```
-notif                # Bash wrapper (37 lines) - command routing only
-notif.applescript    # All AppleScript logic (203 lines) - single consolidated file
-AGENTS.md           # This file
+notif.m         # Objective-C source (all logic in ~310 lines)
+notif           # Compiled universal binary (arm64 + x86_64)
+AGENTS.md       # This file
+README.md       # User documentation
+LICENSE
 ```
 
 ## Commands
@@ -22,85 +25,118 @@ All commands operate on the **first notification** only (no indexing):
 
 - `./notif expand` - Expand notification stack, stays expanded
 - `./notif collapse` - Collapse to stack view
+- `./notif toggle` - Toggle between expand/collapse
 - `./notif click` - Click first notification (assumes expanded)
 - `./notif close` - Close first notification (assumes expanded)
+- `./notif --help` - Show usage information
+- `./notif --version` - Show version
 
 ## Testing
 - **Manual testing**: `./notif <command>` with actual notifications
-- **Direct AppleScript test**: `osascript notif.applescript expand`
+- **Compilation test**: `make` or direct `clang` compilation
 - **Expected behavior**:
   - `click`/`close` assume notifications are already expanded
   - No automatic collapse after operations
-  - Simple error: "No notifications" for all failure cases
+  - Silent execution (no output on success)
+  - Help/error messages to stderr
 
 ## Code Style
 
-### Bash (notif)
-- Use `#!/bin/bash` shebang
-- SCREAMING_SNAKE_CASE for variables: `SCRIPT_DIR`
-- Double-quote all variables: `"$SCRIPT_DIR"`
-- Simple `case` statement for 4 commands
-- Direct `osascript` call (no file concatenation)
-
-### AppleScript (notif.applescript)
+### Objective-C (notif.m)
 
 **Structure:**
-```applescript
--- Constants (property declarations)
--- Common handlers (shared functions)
--- Command handlers (handleExpand, handleCollapse, handleClick, handleClose)
--- Entry point (on run argv - command dispatcher)
+```c
+// Version & Constants
+// Helper functions (getNotificationWindow, getButtons, etc.)
+// Command handlers (handleExpand, handleCollapse, handleToggle, handleClick, handleClose)
+// UI functions (showUsage, showVersion)
+// Entry point (main - command dispatcher)
 ```
 
 **Conventions:**
-- **Constants as properties**: `property PROCESS_NAME : "NotificationCenter"`
+- **Constants**: `#define VERSION "1.0.0"` and `static NSString * const PROCESS_NAME`
 - **Full word variable names**: `element` (not `elem`), `notification` (not `notif`)
-- **Consistent delays**: Use `DEFAULT_DELAY` (0.3 seconds) after UI interactions
-- **Record return format**: `{notification:element, errorMsg:string}`
-- **System Events pattern**: `tell application "System Events"` → `tell process PROCESS_NAME`
-- **Handler naming**: `handleCommandName()` for commands, descriptive names for utilities
-- **Error handling**: Simple string errors, prefer "No notifications" for missing data
+- **Function naming**: `handleCommandName()` for commands, descriptive names for utilities
+- **Memory management**: Proper CFRetain/CFRelease, use ARC with `-fobjc-arc`
+- **Error handling**: Silent on success, no verbose logging
+- **Return values**: void for most handlers (side effects only)
 
-**Key Handlers:**
-- `getNotificationWindow()` - Returns first window or missing value
-- `getFirstNotification(theWindow)` - Returns first alert element (no indexing)
-- `clickElementBySubrole(theWindow, subrole)` - Generic click by subrole
-- `performCloseAction(notification)` - Execute close action on notification
-- `handleExpand/Collapse/Click/Close()` - Command implementations
+**Key Functions:**
+- `getNotificationWindow()` - Returns AXUIElementRef to first window or NULL
+- `getButtons(element, depth)` - Recursive traversal (max depth 4) to find all buttons
+- `getSubrole(element)` - Returns subrole string or nil
+- `isExpanded(buttons)` - Check if any button has SUBROLE_ALERT
+- `getFirstNotification(buttons)` - Find topmost notification by Y position
+- `clickElement(element)` - Perform AXPress action
+- `handleExpand/Collapse/Toggle/Click/Close()` - Command implementations
+- `showUsage()` - Display help message
+- `showVersion()` - Display version
 
-**Constants to use:**
-- `PROCESS_NAME` - "NotificationCenter"
+**Constants:**
+- `VERSION` - "1.0.0"
+- `PROCESS_NAME` - "Notification Center" (with space)
 - `SUBROLE_ALERT` - "AXNotificationCenterAlert"  
 - `SUBROLE_STACK` - "AXNotificationCenterAlertStack"
-- `ACTION_CLOSE` - "Close"
-- `DEFAULT_DELAY` - 0.3
+
+**Frameworks:**
+- `Foundation.framework` - Core Objective-C classes
+- `AppKit.framework` - macOS UI elements
+- `ApplicationServices.framework` - Accessibility APIs (AXUIElement)
 
 ## Architecture
-Single-file AppleScript architecture:
-- All logic in one file (~200 lines)
-- Constants at top for maintainability
-- Common handlers for code reuse
-- Command handlers call common handlers with `my handlerName()`
-- Entry point dispatches commands via `on run argv`
-- Bash script simply routes to `osascript notif.applescript <command>`
+Single-file Objective-C architecture:
+- All logic in one file (~310 lines)
+- Direct use of ApplicationServices framework for UI automation
+- Depth-limited recursive traversal (max 4 levels) for performance
+- Universal binary compilation (arm64 + x86_64)
+- ~0.04s execution time (10x faster than AppleScript)
+
+## Compilation
+
+```bash
+# Universal binary (recommended for distribution)
+clang -o notif notif.m \
+  -framework Foundation \
+  -framework ApplicationServices \
+  -framework AppKit \
+  -fobjc-arc \
+  -arch arm64 -arch x86_64
+
+# Single architecture (faster compilation)
+clang -o notif notif.m \
+  -framework Foundation \
+  -framework ApplicationServices \
+  -framework AppKit \
+  -fobjc-arc
+```
 
 ## Design Philosophy
 - **Minimal feature set**: Only what's needed for keyboard shortcuts
 - **First notification only**: No indexing complexity
 - **No automatic state management**: User controls expand/collapse explicitly
-- **Simple errors**: "No notifications" is sufficient for most cases
 - **Single file**: Easy to read, debug, and maintain
 - **Keyboard-first**: Optimized for rapid keyboard-driven workflows
+- **Native speed**: Direct C API access, no AppleScript overhead
+- **Silent operation**: No output on success, only on error or help
 
-## Error Messages
-Simple, consistent errors:
-- "No notifications" - Window missing or no alerts found
-- "No notification stack found" - Stack element doesn't exist (expand fails)
-- "Already collapsed or no notifications" - Nothing to collapse
-- "Error: Close action not found" - Notification missing close action
+## Performance
+- **Execution time**: ~0.04 seconds (compared to 0.5-0.7s for AppleScript)
+- **Optimization techniques**:
+  - Depth-limited recursion (max 4 levels)
+  - Direct C API usage (no AppleScript layer)
+  - Minimal memory allocations
+  - ARC for automatic memory management
+
+## Error Handling
+Silent operation by default:
+- Success: No output
+- Failure: Silent (returns without action if no window/notifications)
+- Help requested: Display usage to stderr
+- Invalid command: Display error + usage to stderr
 
 ## What This Is NOT
-- Not a notification counter (removed `count` command)
-- Not a bulk manager (removed `clear` command)  
-- Not index-based (removed N-th notification support)
-- Not a complex multi-file system (consolidated to single file)
+- Not a notification counter
+- Not a bulk manager  
+- Not index-based (only first notification)
+- Not verbose (silent on success)
+- Not dependent on external scripts (single binary)

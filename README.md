@@ -6,10 +6,11 @@ Minimal macOS Notification Center controller for keyboard shortcuts.
 
 - **Expand** notification stack
 - **Collapse** notification stack
+- **Toggle** between expand/collapse
 - **Click** first notification (opens source app)
 - **Close** first notification (dismiss without action)
 
-Single-file AppleScript architecture optimized for keyboard-driven workflows.
+Native Objective-C implementation optimized for speed and keyboard-driven workflows.
 
 ## Installation
 
@@ -24,18 +25,45 @@ brew install zukash/tap/notif
 ```bash
 git clone https://github.com/zukash/notif.git
 cd notif
-chmod +x notif
-ln -s "$(pwd)/notif" /usr/local/bin/notif
+
+# Build and install
+make
+sudo make install
+
+# Or build and install manually
+make
+cp notif /usr/local/bin/
+
+# Uninstall
+sudo make uninstall
+```
+
+**Build options:**
+```bash
+make           # Build universal binary (arm64 + x86_64)
+make clean     # Remove compiled binary
+make test      # Build and run tests
+make install   # Install to /usr/local/bin
+make uninstall # Remove from /usr/local/bin
 ```
 
 ## Usage
 
 ```bash
+# Show help
+notif --help
+
+# Show version
+notif --version
+
 # Expand notification stack (stays expanded)
 notif expand
 
 # Collapse to stack view
 notif collapse
+
+# Toggle between expand/collapse
+notif toggle
 
 # Click first notification (assumes already expanded)
 notif click
@@ -67,24 +95,26 @@ Example Karabiner configuration:
 - **No automatic state management**: User controls expand/collapse explicitly
 - **Single file**: Easy to read, debug, and maintain
 - **Keyboard-first**: Optimized for rapid keyboard-driven workflows
+- **Native speed**: ~0.04s execution time via Objective-C
 
 ## Architecture
 
+Single-file Objective-C implementation (~310 lines):
+
 ```
-notif (37 lines)          # Bash wrapper - command routing only
-notif.applescript (203 lines)  # All AppleScript logic
+notif.m        # All logic in one file
+  ├─ UI element traversal (depth-limited recursion)
+  ├─ Command handlers (expand/collapse/toggle/click/close)
+  └─ Entry point (command dispatcher with help/version)
 ```
 
-All logic in a single AppleScript file with clear structure:
-- Constants (process names, UI element roles)
-- Common handlers (window/notification access)
-- Command handlers (expand/collapse/click/close)
-- Entry point (command dispatcher)
+Uses macOS ApplicationServices framework for direct UI automation without AppleScript overhead.
 
 ## Requirements
 
 - macOS (tested on macOS 13+)
-- Accessibility permissions for Terminal/iTerm2
+- Xcode Command Line Tools (for compilation)
+- Accessibility permissions for Terminal/iTerm2 (for execution)
 
 ## License
 

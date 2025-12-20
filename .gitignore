@@ -1,0 +1,9 @@
+# Compiled binary
+notif
+
+# macOS
+.DS_Store
+
+# Development/debug files
+*.o
+*.dSYM
