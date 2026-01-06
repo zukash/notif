@@ -3,7 +3,7 @@
 #import <ApplicationServices/ApplicationServices.h>
 
 // Version
-#define VERSION "1.2.0"
+#define VERSION "1.2.1"
 
 // Constants
 static NSString * const PROCESS_NAME = @"Notification Center";
@@ -36,20 +36,45 @@ AXUIElementRef getNotificationWindow(void) {
     return NULL; // NotificationCenter process not found
 }
 
-// Get all buttons from window (depth-limited traversal)
+// Get all buttons and notification groups from window (depth-limited traversal)
 NSMutableArray *getButtons(AXUIElementRef element, int depth) {
     NSMutableArray *buttons = [NSMutableArray array];
     
-    if (depth > 4) return buttons;
+    if (depth > 6) return buttons;
     
     CFStringRef role = NULL;
+    CFStringRef subrole = NULL;
+    BOOL shouldCollect = NO;
+    
     if (AXUIElementCopyAttributeValue(element, kAXRoleAttribute, (CFTypeRef *)&role) == kAXErrorSuccess) {
-        if (role && CFStringCompare(role, CFSTR("AXButton"), 0) == kCFCompareEqualTo) {
-            CFRetain(element); // Retain before bridging
-            [buttons addObject:(__bridge_transfer id)element];
+        if (role) {
+            // Collect AXButton
+            if (CFStringCompare(role, CFSTR("AXButton"), 0) == kCFCompareEqualTo) {
+                shouldCollect = YES;
+            }
+            // Collect AXGroup with notification-related subroles
+            else if (CFStringCompare(role, CFSTR("AXGroup"), 0) == kCFCompareEqualTo) {
+                if (AXUIElementCopyAttributeValue(element, kAXSubroleAttribute, (CFTypeRef *)&subrole) == kAXErrorSuccess) {
+                    if (subrole) {
+                        NSString *subroleStr = (__bridge NSString *)subrole;
+                        if ([subroleStr isEqualToString:SUBROLE_ALERT] || 
+                            [subroleStr isEqualToString:SUBROLE_STACK]) {
+                            shouldCollect = YES;
+                        }
+                    }
+                }
+            }
+            
+            if (shouldCollect) {
+                CFRetain(element); // Retain before bridging
+                [buttons addObject:(__bridge_transfer id)element];
+            }
+            
+            CFRelease(role);
         }
-        if (role) CFRelease(role);
     }
+    
+    if (subrole) CFRelease(subrole);
     
     CFArrayRef children = NULL;
     if (AXUIElementCopyAttributeValue(element, kAXChildrenAttribute, (CFTypeRef *)&children) == kAXErrorSuccess) {
